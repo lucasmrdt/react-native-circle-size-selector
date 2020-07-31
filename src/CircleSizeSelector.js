@@ -27,6 +27,8 @@ type Props = {
   currentValueCircleStyle: ViewPropTypes.style,
   resizingCurrentValueCircleStyle: ViewPropTypes.style,
   children?: React.Node,
+  minRadius?: number,
+  shouldAlwaysBeDisplayedInResizeMode?: boolean,
 }
 
 type DefaultProps = {
@@ -38,6 +40,8 @@ type DefaultProps = {
   graduationLineCircleStyle: ViewPropTypes.style,
   currentValueCircleStyle: ViewPropTypes.style,
   resizingCurrentValueCircleStyle: ViewPropTypes.style,
+  minRadius: number,
+  shouldAlwaysBeDisplayedInResizeMode: boolean,
 }
 
 const defaultStyles = StyleSheet.create({
@@ -78,6 +82,8 @@ export default class CircleSizeSelector extends React.Component<Props, State> {
     resizingCurrentValueCircleStyle: defaultStyles.resizingCurrentValueCircle,
     onChange: () => {},
     onSelected: () => {},
+    minRadius: 0,
+    shouldAlwaysBeDisplayedInResizeMode: false,
   }
 
   constructor(props: Props) {
@@ -155,8 +161,9 @@ export default class CircleSizeSelector extends React.Component<Props, State> {
   }
 
   radiusAtValue(v: number) {
+    const { minRadius } = this.props
     const area = this.getAreaAtValue(v)
-    return Math.sqrt(area / Math.PI)
+    return Math.sqrt(area / Math.PI) + minRadius
   }
 
   selectValueFromRadius(radius: number) {
@@ -168,13 +175,12 @@ export default class CircleSizeSelector extends React.Component<Props, State> {
   }
 
   getAreaAtValue(value: number): number {
-    return this.maxArea * (value / this.maxValue)
+    return (this.maxArea * (value + 1)) / (this.maxValue + 1)
   }
 
   clear() {
     this._previousPosition = null
     this._tapStartPosition = null
-    this.setState({ resizing: false })
   }
 
   onLayout = (e: Object) => {
@@ -247,16 +253,22 @@ export default class CircleSizeSelector extends React.Component<Props, State> {
       currentValueCircleStyle,
       resizingCurrentValueCircleStyle,
       children,
+      shouldAlwaysBeDisplayedInResizeMode,
     } = this.props
     const valuesInRange = this.valuesInRange
     const valuesLength = valuesInRange.length
     return (
-      <View style={styles.container} onLayout={this.onLayout}>
+      <View
+        style={styles.container}
+        onLayout={this.onLayout}
+        {...this._panResponder.panHandlers}
+      >
         {valuesInRange.reverse().map((v, i) => {
           const radius = this.radiusAtValue(v)
           const isOutermost = v === this.maxValue
           const shouldShowGraduationLine =
-            resizing && this.props.showGraduationLinesOnResizing
+            (resizing || shouldAlwaysBeDisplayedInResizeMode) &&
+            this.props.showGraduationLinesOnResizing
           if (!isOutermost && !shouldShowGraduationLine) {
             return null
           }
@@ -285,9 +297,9 @@ export default class CircleSizeSelector extends React.Component<Props, State> {
           radius={this.radiusAtCurrentValue}
           style={[
             currentValueCircleStyle,
-            resizing && resizingCurrentValueCircleStyle,
+            (resizing || shouldAlwaysBeDisplayedInResizeMode) &&
+              resizingCurrentValueCircleStyle,
           ]}
-          {...this._panResponder.panHandlers}
         />
         {children}
       </View>
